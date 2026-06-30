@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS ciphertrust_lite;
-USE ciphertrust_lite;
+CREATE DATABASE IF NOT EXISTS kms_lite;
+USE kms_lite;
 
 DROP TABLE IF EXISTS employees;
 

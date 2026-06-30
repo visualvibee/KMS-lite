@@ -1,0 +1,81 @@
+warning: in the working copy of '.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/crypto_engine.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/database.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'schema.sql', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.env.example b/.env.example[m
+[1mindex 3e944e0..fa504c8 100644[m
+[1m--- a/.env.example[m
+[1m+++ b/.env.example[m
+[36m@@ -1,8 +1,8 @@[m
+[31m-CIPHERTRUST_LITE_MASTER_KEY=REPLACE_ME_WITH_GENERATED_KEY[m
+[31m-CIPHERTRUST_LITE_API_KEYS=REPLACE_ME_WITH_YOUR_API_KEY[m
+[32m+[m[32mKMS_LITE_MASTER_KEY=REPLACE_ME_WITH_GENERATED_KEY[m
+[32m+[m[32mKMS_LITE_API_KEYS=REPLACE_ME_WITH_YOUR_API_KEY[m
+ [m
+[31m-DB_USER=ciphertrust_app[m
+[32m+[m[32mDB_USER=kms_app[m
+ DB_PASSWORD=REPLACE_ME_WITH_DB_PASSWORD[m
+ DB_HOST=localhost[m
+ DB_PORT=3306[m
+[31m-DB_NAME=ciphertrust_lite[m
+[32m+[m[32mDB_NAME=kms_lite[m
+\ No newline at end of file[m
+[1mdiff --git a/app/crypto_engine.py b/app/crypto_engine.py[m
+[1mindex 1d5120e..fcdae85 100644[m
+[1m--- a/app/crypto_engine.py[m
+[1m+++ b/app/crypto_engine.py[m
+[36m@@ -2,7 +2,7 @@[m [mimport os[m
+ import base64[m
+ from cryptography.hazmat.primitives.ciphers.aead import AESGCM[m
+ [m
+[31m-MASTER_KEY_ENV_VAR = "CIPHERTRUST_LITE_MASTER_KEY"[m
+[32m+[m[32mMASTER_KEY_ENV_VAR = "KMS_LITE_MASTER_KEY"[m
+ NONCE_SIZE_BYTES = 12[m
+ [m
+ _MASTER_KEY: bytes | None = None[m
+[1mdiff --git a/app/database.py b/app/database.py[m
+[1mindex 5c45c7d..a28da72 100644[m
+[1m--- a/app/database.py[m
+[1m+++ b/app/database.py[m
+[36m@@ -6,7 +6,7 @@[m [mDB_USER = os.environ.get("DB_USER", "root")[m
+ DB_PASSWORD = os.environ.get("DB_PASSWORD", "")[m
+ DB_HOST = os.environ.get("DB_HOST", "localhost")[m
+ DB_PORT = os.environ.get("DB_PORT", "3306")[m
+[31m-DB_NAME = os.environ.get("DB_NAME", "ciphertrust_lite")[m
+[32m+[m[32mDB_NAME = os.environ.get("DB_NAME", "kms_lite")[m
+ [m
+ DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"[m
+ [m
+[1mdiff --git a/app/main.py b/app/main.py[m
+[1mindex 82e779d..f7e956a 100644[m
+[1m--- a/app/main.py[m
+[1m+++ b/app/main.py[m
+[36m@@ -8,13 +8,13 @@[m [mfrom app import crypto_engine[m
+ from app.database import run_query, run_write[m
+ [m
+ app = FastAPI([m
+[31m-    title="CipherTrust-Lite",[m
+[32m+[m[32m    title="KMS-Lite",[m
+     description="Column-level encryption gateway for MySQL",[m
+     version="0.1.0",[m
+ )[m
+ [m
+ VALID_API_KEYS = set([m
+[31m-    filter(None, os.environ.get("CIPHERTRUST_LITE_API_KEYS", "").split(","))[m
+[32m+[m[32m    filter(None, os.environ.get("KMS_LITE_API_KEYS", "").split(","))[m
+ )[m
+ [m
+ [m
+[1mdiff --git a/schema.sql b/schema.sql[m
+[1mindex 9b1dac9..b88ebfd 100644[m
+[1m--- a/schema.sql[m
+[1m+++ b/schema.sql[m
+[36m@@ -1,5 +1,5 @@[m
+[31m-CREATE DATABASE IF NOT EXISTS ciphertrust_lite;[m
+[31m-USE ciphertrust_lite;[m
+[32m+[m[32mCREATE DATABASE IF NOT EXISTS kms_lite;[m
+[32m+[m[32mUSE kms_lite;[m
+ [m
+ DROP TABLE IF EXISTS employees;[m
+ [m

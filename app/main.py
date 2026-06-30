@@ -8,13 +8,13 @@ from app import crypto_engine
 from app.database import run_query, run_write
 
 app = FastAPI(
-    title="CipherTrust-Lite",
+    title="KMS-Lite",
     description="Column-level encryption gateway for MySQL",
     version="0.1.0",
 )
 
 VALID_API_KEYS = set(
-    filter(None, os.environ.get("CIPHERTRUST_LITE_API_KEYS", "").split(","))
+    filter(None, os.environ.get("KMS_LITE_API_KEYS", "").split(","))
 )
 
 

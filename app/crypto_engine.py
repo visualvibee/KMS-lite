@@ -2,7 +2,7 @@ import os
 import base64
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-MASTER_KEY_ENV_VAR = "CIPHERTRUST_LITE_MASTER_KEY"
+MASTER_KEY_ENV_VAR = "KMS_LITE_MASTER_KEY"
 NONCE_SIZE_BYTES = 12
 
 _MASTER_KEY: bytes | None = None
