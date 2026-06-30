@@ -1,4 +1,4 @@
-# CipherTrust-Lite
+# KMS-Lite
 
 A proof-of-concept **column-level encryption gateway** for MySQL, built as an
 open-source analog to Thales CipherTrust's Application Data Protection /
