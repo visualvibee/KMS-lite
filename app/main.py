@@ -1,7 +1,10 @@
 import os
 from typing import Optional
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr, Field
 
 from app import crypto_engine
@@ -11,6 +14,13 @@ app = FastAPI(
     title="KMS-Lite",
     description="Column-level encryption gateway for MySQL",
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 VALID_API_KEYS = set(
@@ -52,6 +62,7 @@ class EmployeeOut(BaseModel):
     ssn: str
     salary: float
     bank_account: str
+    key_id: str
 
 
 def _decrypt_row(row: dict) -> dict:
@@ -63,6 +74,7 @@ def _decrypt_row(row: dict) -> dict:
         "ssn": crypto_engine.decrypt_value(row["ssn_encrypted"]),
         "salary": float(crypto_engine.decrypt_value(row["salary_encrypted"])),
         "bank_account": crypto_engine.decrypt_value(row["bank_account_encrypted"]),
+        "key_id": row["key_id"],
     }
 
 
@@ -81,6 +93,12 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/ui", response_class=HTMLResponse)
+def ui():
+    html = (Path(__file__).parent.parent / "static" / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html)
+
+
 @app.post("/employees", response_model=EmployeeOut, status_code=201)
 def create_employee(payload: EmployeeCreate, api_key: str = Depends(require_api_key)):
     ssn_enc = crypto_engine.encrypt_value(payload.ssn)
@@ -90,8 +108,8 @@ def create_employee(payload: EmployeeCreate, api_key: str = Depends(require_api_
     result = run_write(
         """
         INSERT INTO employees (name, department, email, ssn_encrypted,
-                                salary_encrypted, bank_account_encrypted)
-        VALUES (:name, :department, :email, :ssn_enc, :salary_enc, :bank_enc)
+                                salary_encrypted, bank_account_encrypted, key_id)
+        VALUES (:name, :department, :email, :ssn_enc, :salary_enc, :bank_enc, :key_id)
         """,
         {
             "name": payload.name,
@@ -100,6 +118,7 @@ def create_employee(payload: EmployeeCreate, api_key: str = Depends(require_api_
             "ssn_enc": ssn_enc,
             "salary_enc": salary_enc,
             "bank_enc": bank_enc,
+            "key_id": crypto_engine.CURRENT_KEY_ID,
         },
     )
     new_id = result.lastrowid
@@ -181,3 +200,19 @@ def delete_employee(employee_id: int, api_key: str = Depends(require_api_key)):
 @app.get("/audit-logs")
 def list_audit_logs(api_key: str = Depends(require_api_key)):
     return run_query("SELECT * FROM audit_logs ORDER BY timestamp DESC")
+
+
+@app.get("/encryption-keys")
+def list_encryption_keys(api_key: str = Depends(require_api_key)):
+    return run_query("SELECT * FROM encryption_keys ORDER BY created_at DESC")
+
+@app.post("/encryption-keys/generate")
+def generate_key(api_key: str = Depends(require_api_key)):
+    import uuid
+    key_id = f"kms-key-{uuid.uuid4().hex[:8]}"
+    run_write(
+        "INSERT INTO encryption_keys (key_id, algorithm, status) VALUES (:key_id, 'AES-256-GCM', 'active')",
+        {"key_id": key_id},
+    )
+    rows = run_query("SELECT * FROM encryption_keys WHERE key_id = :key_id", {"key_id": key_id})
+    return rows[0]

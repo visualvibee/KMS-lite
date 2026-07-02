@@ -2,6 +2,17 @@ CREATE DATABASE IF NOT EXISTS kms_lite;
 USE kms_lite;
 
 DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS encryption_keys;
+
+CREATE TABLE encryption_keys (
+    key_id          VARCHAR(50) PRIMARY KEY,
+    algorithm       VARCHAR(50) NOT NULL DEFAULT 'AES-256-GCM',
+    status          ENUM('active', 'retired', 'compromised') NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO encryption_keys (key_id, algorithm, status)
+VALUES ('kms-master-v1', 'AES-256-GCM', 'active');
 
 CREATE TABLE employees (
     id              INT AUTO_INCREMENT PRIMARY KEY,
@@ -11,6 +22,7 @@ CREATE TABLE employees (
     ssn_encrypted           TEXT NOT NULL,
     salary_encrypted        TEXT NOT NULL,
     bank_account_encrypted  TEXT NOT NULL,
+    key_id          VARCHAR(50) NOT NULL DEFAULT 'kms-master-v1' REFERENCES encryption_keys(key_id),
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

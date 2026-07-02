@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KMS-Lite</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #1a1a2e; min-height: 100vh; }
+
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%); }
+    .login-card { background: white; border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 24px 64px rgba(0,0,0,0.2); }
+    .login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .login-brand .shield { width: 40px; height: 40px; background: #1e3a5f; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white; }
+    .login-brand h1 { font-size: 22px; font-weight: 800; color: #1e3a5f; }
+    .login-sub { font-size: 13px; color: #64748b; margin-bottom: 32px; margin-left: 52px; }
+    .login-label { font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 6px; }
+    .login-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; font-size: 14px; outline: none; margin-bottom: 16px; transition: border-color 0.15s; }
+    .login-input:focus { border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,0.08); }
+    .login-btn { width: 100%; background: #1e3a5f; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px; transition: background 0.15s; }
+    .login-btn:hover { background: #16304f; }
+    .login-error { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 12px; }
+    .login-hint { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 20px; }
+
+    .header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .header-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: #1e3a5f; }
+    .header-brand .shield { width: 28px; height: 28px; background: #1e3a5f; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }
+    .header-badge { font-size: 11px; background: #e8f0fe; color: #1e3a5f; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .header-user { font-size: 13px; color: #64748b; }
+    .header-user strong { color: #1e3a5f; }
+    .logout-btn { font-size: 12px; color: #94a3b8; background: none; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+    .logout-btn:hover { color: #dc2626; border-color: #fca5a5; }
+
+    .nav { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 32px; display: flex; }
+    .nav-tab { padding: 14px 20px; font-size: 14px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; }
+    .nav-tab:hover { color: #1e3a5f; }
+    .nav-tab.active { color: #1e3a5f; border-bottom-color: #1e3a5f; font-weight: 600; }
+
+    .main { padding: 28px 32px; max-width: 1100px; margin: 0 auto; }
+    .page-header { margin-bottom: 20px; }
+    .page-header h2 { font-size: 20px; font-weight: 700; color: #1a1a2e; }
+    .page-header p { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+    .card-title { font-size: 14px; font-weight: 600; color: #1e3a5f; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input { border: 1px solid #e2e8f0; border-radius: 6px; padding: 9px 12px; font-size: 14px; outline: none; transition: border-color 0.15s; color: #1a1a2e; }
+    .form-group input:focus { border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,0.08); }
+    .form-actions { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+
+    .btn { padding: 9px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn-primary { background: #1e3a5f; color: white; }
+    .btn-primary:hover { background: #16304f; }
+    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    tbody td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #16a34a; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+    .badge-insert { background: #dcfce7; color: #16a34a; }
+    .badge-select { background: #dbeafe; color: #1d4ed8; }
+    .badge-update { background: #fef9c3; color: #a16207; }
+    .badge-delete { background: #fee2e2; color: #dc2626; }
+
+    .key-id-tag { font-family: monospace; font-size: 11px; background: #e8f0fe; color: #1e3a5f; padding: 2px 7px; border-radius: 4px; }
+
+    .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-top: 12px; }
+    .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .alert-error { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+
+    .sensitive { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .sensitive-hidden { font-size: 12px; color: #94a3b8; letter-spacing: 2px; }
+    .sensitive-reveal { font-size: 11px; color: #1e3a5f; text-decoration: underline; }
+
+    .empty { text-align: center; padding: 40px; color: #94a3b8; font-size: 14px; }
+    .loading { text-align: center; padding: 30px; color: #94a3b8; font-size: 13px; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 200; }
+    .modal { background: white; border-radius: 12px; padding: 28px; width: 480px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .modal-title { font-size: 16px; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
+    .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #64748b; font-weight: 500; }
+    .detail-value { color: #1a1a2e; font-weight: 500; text-align: right; max-width: 60%; word-break: break-all; }
+
+    .view-all-btn { display: block; width: 100%; text-align: center; padding: 10px; font-size: 13px; color: #1e3a5f; font-weight: 600; cursor: pointer; border-top: 1px solid #f1f5f9; margin-top: 4px; background: none; border-left: none; border-right: none; border-bottom: none; }
+    .view-all-btn:hover { background: #f8fafc; }
+
+    .delete-confirm-input { width: 100%; border: 1px solid #fca5a5; border-radius: 6px; padding: 9px 12px; font-size: 14px; outline: none; margin-top: 12px; }
+    .delete-confirm-input:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.08); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const DEMO_CREDENTIALS = { admin: "admin123" };
+const API_KEY = "testkey123";
+
+function api(path, options = {}) {
+  return fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", "X-API-Key": API_KEY, ...(options.headers || {}) },
+  }).then(async res => {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "Request failed");
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  });
+}
+
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const submit = () => {
+    if (DEMO_CREDENTIALS[username] === password) {
+      onLogin(username);
+    } else {
+      setError("Invalid username or password.");
+    }
+  };
+
+  const handleKey = e => { if (e.key === "Enter") submit(); };
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="login-brand">
+          <div className="shield">🔐</div>
+          <h1>KMS-Lite</h1>
+        </div>
+        <div className="login-sub">Key Management & Encryption Gateway</div>
+        <label className="login-label">Username</label>
+        <input className="login-input" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={handleKey} placeholder="Enter username" autoFocus />
+        <label className="login-label">Password</label>
+        <input className="login-input" type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKey} placeholder="Enter password" />
+        <button className="login-btn" onClick={submit}>Sign In</button>
+        {error && <div className="login-error">{error}</div>}
+        <div className="login-hint">Demo credentials: admin / admin123</div>
+      </div>
+    </div>
+  );
+}
+
+function SensitiveValue({ value }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <div className="sensitive" onClick={e => { e.stopPropagation(); setRevealed(r => !r); }}>
+      {revealed ? <span>{value}</span> : <span className="sensitive-hidden">••••••••</span>}
+      <span className="sensitive-reveal">{revealed ? "hide" : "reveal"}</span>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ employee, onConfirm, onCancel }) {
+  const [typed, setTyped] = useState("");
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-title">Confirm Delete</div>
+        <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+          This will permanently delete <strong>{employee.name}</strong>'s record.
+          Type the employee's full name below to confirm.
+        </p>
+        <input
+          className="delete-confirm-input"
+          placeholder={`Type "${employee.name}" to confirm`}
+          value={typed}
+          onChange={e => setTyped(e.target.value)}
+          autoFocus
+        />
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button
+            className="btn btn-danger"
+            disabled={typed !== employee.name}
+            onClick={onConfirm}
+            style={{ opacity: typed !== employee.name ? 0.5 : 1 }}
+          >Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeModal({ employee, onClose }) {
+  if (!employee) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-title">Employee Record — #{employee.id}</div>
+        {[["Name", employee.name], ["Department", employee.department], ["Email", employee.email]].map(([label, val]) => (
+          <div className="detail-row" key={label}>
+            <span className="detail-label">{label}</span>
+            <span className="detail-value">{val}</span>
+          </div>
+        ))}
+        {[["SSN", employee.ssn], ["Salary", `$${Number(employee.salary).toLocaleString()}`], ["Bank Account", employee.bank_account]].map(([label, val]) => (
+          <div className="detail-row" key={label}>
+            <span className="detail-label">{label}</span>
+            <span className="detail-value"><SensitiveValue value={val} /></span>
+          </div>
+        ))}
+        <div className="detail-row">
+          <span className="detail-label">Encryption Key</span>
+          <span className="detail-value"><span className="key-id-tag">{employee.key_id}</span></span>
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmployeesTab() {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [toDelete, setToDelete] = useState(null);
+  const [filterDept, setFilterDept] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true); setError("");
+    const url = filterDept ? `/employees?department=${encodeURIComponent(filterDept)}` : "/employees";
+    api(url).then(setEmployees).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [filterDept]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const confirmDelete = () => {
+    api(`/employees/${toDelete.id}`, { method: "DELETE" })
+      .then(() => { setToDelete(null); load(); })
+      .catch(e => { setError(e.message); setToDelete(null); });
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>Employees</h2>
+        <p>Sensitive fields are encrypted at rest. Click a row to view full record. Sensitive values require deliberate reveal.</p>
+      </div>
+      <div className="card">
+        <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center" }}>
+          <input
+            style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "7px 12px", fontSize: 13, outline: "none", width: 200 }}
+            placeholder="Filter by department..."
+            value={filterDept}
+            onChange={e => setFilterDept(e.target.value)}
+          />
+          <button className="btn btn-secondary btn-sm" onClick={load}>Refresh</button>
+        </div>
+        {error && <div className="alert alert-error">{error}</div>}
+        {loading ? <div className="loading">Loading...</div>
+          : employees.length === 0 ? <div className="empty">No employees found. Add one using the "Add Employee" tab.</div>
+          : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Name</th><th>Department</th><th>Email</th><th>SSN</th><th>Salary</th><th>Encryption Key</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {employees.map(emp => (
+                    <tr key={emp.id} style={{ cursor: "pointer" }} onClick={() => setSelected(emp)}>
+                      <td><span className="badge badge-gray">#{emp.id}</span></td>
+                      <td><strong>{emp.name}</strong></td>
+                      <td>{emp.department}</td>
+                      <td style={{ color: "#64748b" }}>{emp.email}</td>
+                      <td><SensitiveValue value={emp.ssn} /></td>
+                      <td><SensitiveValue value={`$${Number(emp.salary).toLocaleString()}`} /></td>
+                      <td><span className="key-id-tag">{emp.key_id}</span></td>
+                      <td onClick={e => e.stopPropagation()}>
+                        <button className="btn btn-danger btn-sm" onClick={() => setToDelete(emp)}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+      {selected && <EmployeeModal employee={selected} onClose={() => setSelected(null)} />}
+      {toDelete && <DeleteConfirmModal employee={toDelete} onConfirm={confirmDelete} onCancel={() => setToDelete(null)} />}
+    </div>
+  );
+}
+
+function AddEmployeeTab({ onAdded }) {
+  const empty = { name: "", department: "", email: "", ssn: "", salary: "", bank_account: "" };
+  const [form, setForm] = useState(empty);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const submit = () => {
+    setLoading(true); setError(""); setSuccess(null);
+    api("/employees", { method: "POST", body: JSON.stringify({ ...form, salary: parseFloat(form.salary) }) })
+      .then(emp => { setSuccess(emp); setForm(empty); onAdded(); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>Add Employee</h2>
+        <p>Sensitive fields are encrypted before reaching the database. The encryption key ID is recorded per row.</p>
+      </div>
+      <div className="card">
+        <div className="card-title">Employee Details</div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Full Name</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Jane Smith" />
+          </div>
+          <div className="form-group">
+            <label>Department</label>
+            <input value={form.department} onChange={e => set("department", e.target.value)} placeholder="Engineering" />
+          </div>
+          <div className="form-group full">
+            <label>Email Address</label>
+            <input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="jane@example.com" />
+          </div>
+        </div>
+        <div className="card-title" style={{ marginTop: 20 }}>Sensitive Fields — Encrypted at Rest</div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>SSN</label>
+            <input value={form.ssn} onChange={e => set("ssn", e.target.value)} placeholder="123-45-6789" />
+          </div>
+          <div className="form-group">
+            <label>Salary (USD)</label>
+            <input type="number" value={form.salary} onChange={e => set("salary", e.target.value)} placeholder="85000" />
+          </div>
+          <div className="form-group">
+            <label>Bank Account</label>
+            <input value={form.bank_account} onChange={e => set("bank_account", e.target.value)} placeholder="ACC1234" />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={submit} disabled={loading}>
+            {loading ? "Encrypting & Saving..." : "Add Employee"}
+          </button>
+          <button className="btn btn-secondary" onClick={() => setForm(empty)}>Clear</button>
+        </div>
+        {error && <div className="alert alert-error">{error}</div>}
+        {success && (
+          <div className="alert alert-success">
+            <strong>{success.name}</strong> added (ID #{success.id}). Encrypted with key <span className="key-id-tag">{success.key_id}</span>.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AuditLogsTab() {
+  const [logs, setLogs] = useState([]);
+  const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api("/audit-logs").then(setLogs).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const opClass = op => ({ INSERT: "badge-insert", SELECT: "badge-select", UPDATE: "badge-update", DELETE: "badge-delete" }[op] || "badge-gray");
+  const visible = showAll ? logs : logs.slice(0, 5);
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>Audit Logs</h2>
+        <p>Every database operation is recorded — DAM-style monitoring of all activity against protected tables.</p>
+      </div>
+      <div className="card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>{logs.length} total events</span>
+          <button className="btn btn-secondary btn-sm" onClick={load}>Refresh</button>
+        </div>
+        {error && <div className="alert alert-error">{error}</div>}
+        {loading ? <div className="loading">Loading...</div>
+          : logs.length === 0 ? <div className="empty">No audit logs yet.</div>
+          : (
+            <>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>#</th><th>Operation</th><th>Table</th><th>Record ID</th><th>Timestamp</th></tr>
+                  </thead>
+                  <tbody>
+                    {visible.map(log => (
+                      <tr key={log.id}>
+                        <td style={{ color: "#94a3b8" }}>{log.id}</td>
+                        <td><span className={`badge ${opClass(log.operation)}`}>{log.operation}</span></td>
+                        <td><code style={{ fontSize: 12 }}>{log.table_name}</code></td>
+                        <td>{log.record_id ?? <span style={{ color: "#94a3b8" }}>—</span>}</td>
+                        <td style={{ color: "#64748b", fontSize: 12 }}>{new Date(log.timestamp).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {logs.length > 5 && (
+                <button className="view-all-btn" onClick={() => setShowAll(s => !s)}>
+                  {showAll ? "Show less ↑" : `View all ${logs.length} events ↓`}
+                </button>
+              )}
+            </>
+          )}
+      </div>
+    </div>
+  );
+}
+
+function KeysTab() {
+  const [keys, setKeys] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api("/encryption-keys").then(setKeys).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const generateKey = () => {
+    setGenerating(true); setError(""); setSuccess("");
+    api("/encryption-keys/generate", { method: "POST" })
+      .then(k => { setSuccess(`Key "${k.key_id}" generated successfully.`); load(); })
+      .catch(e => setError(e.message))
+      .finally(() => setGenerating(false));
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>Encryption Keys</h2>
+        <p>Key metadata only — identifiers, algorithm, and lifecycle status. No key material is ever stored here or returned by the API.</p>
+      </div>
+      <div className="card">
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+          <button className="btn btn-primary btn-sm" onClick={generateKey} disabled={generating}>
+            {generating ? "Generating..." : "+ Generate New Key"}
+          </button>
+        </div>
+        {error && <div className="alert alert-error">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
+        {loading ? <div className="loading">Loading...</div>
+          : keys.length === 0 ? <div className="empty">No keys found.</div>
+          : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Key ID</th><th>Algorithm</th><th>Status</th><th>Created</th></tr>
+                </thead>
+                <tbody>
+                  {keys.map(k => (
+                    <tr key={k.key_id}>
+                      <td><span className="key-id-tag">{k.key_id}</span></td>
+                      <td><span className="badge badge-blue">{k.algorithm}</span></td>
+                      <td><span className={`badge ${k.status === "active" ? "badge-green" : "badge-gray"}`}>{k.status}</span></td>
+                      <td style={{ color: "#64748b", fontSize: 12 }}>{new Date(k.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        <div style={{ marginTop: 20, padding: "14px 16px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>Note on key security</div>
+          <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+            The actual AES-256 key material never appears in this UI or in the database.
+            Each employee row stores only the <strong>key_id</strong> reference shown above —
+            the same pattern CipherTrust's Application Data Protection uses to decouple key management from application data.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [tab, setTab] = useState("employees");
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  if (!user) return <LoginPage onLogin={setUser} />;
+
+  const tabs = [
+    { id: "employees", label: "Employees" },
+    { id: "add", label: "Add Employee" },
+    { id: "audit", label: "Audit Logs" },
+    { id: "keys", label: "Encryption Keys" },
+  ];
+
+  return (
+    <div>
+      <div className="header">
+        <div className="header-brand">
+          <div className="shield">🔐</div>
+          KMS-Lite
+          <span className="header-badge">DEMO</span>
+        </div>
+        <div className="header-right">
+          <span className="header-user">Signed in as <strong>{user}</strong></span>
+          <button className="logout-btn" onClick={() => setUser(null)}>Sign out</button>
+        </div>
+      </div>
+      <div className="nav">
+        {tabs.map(t => (
+          <div key={t.id} className={`nav-tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+            {t.label}
+          </div>
+        ))}
+      </div>
+      <div className="main">
+        {tab === "employees" && <EmployeesTab key={refreshTick} />}
+        {tab === "add" && <AddEmployeeTab onAdded={() => setRefreshTick(t => t + 1)} />}
+        {tab === "audit" && <AuditLogsTab />}
+        {tab === "keys" && <KeysTab />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

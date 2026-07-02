@@ -4,6 +4,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 MASTER_KEY_ENV_VAR = "KMS_LITE_MASTER_KEY"
 NONCE_SIZE_BYTES = 12
+CURRENT_KEY_ID = "kms-master-v1"
 
 _MASTER_KEY: bytes | None = None
 
