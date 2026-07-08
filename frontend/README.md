@@ -1,16 +1,62 @@
-# React + Vite
+# KMS-Lite Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the KMS-Lite encryption gateway.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 18 (Vite, JavaScript)
+- React Router v6 — client-side routing
+- Axios — HTTP client with JWT interceptor
+- Plain CSS — no UI framework
 
-## React Compiler
+## Structure
+src/
+├── api/
+│   └── axios.js          # Axios instance — attaches Bearer token to every request
+├── context/
+│   └── AuthContext.jsx   # Auth state (user, role, token) — persisted in localStorage
+├── components/
+│   ├── Navbar.jsx        # Sidebar layout wrapper used by all authenticated pages
+│   └── ProtectedRoute.jsx  # Redirects to /login if unauthenticated or wrong role
+└── pages/
+├── Login.jsx         # JWT login form
+├── Dashboard.jsx     # Role-specific landing with quick-access cards
+├── Employees.jsx     # Employee list with encrypted field reveal, role-gated delete
+├── AddEmployee.jsx   # Add employee form (admin + hr only)
+├── AuditLogs.jsx     # Audit trail with expand/collapse
+└── KeyManagement.jsx # Key lifecycle management (keymanager + admin)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Role-based routing
 
-## Expanding the ESLint configuration
+| Route | Admin | HR | Analyst | Key Manager |
+|---|---|---|---|---|
+| /dashboard | ✅ | ✅ | ✅ | ✅ |
+| /employees | ✅ | ✅ | ✅ | ❌ |
+| /add-employee | ✅ | ✅ | ❌ | ❌ |
+| /audit-logs | ✅ | ❌ | ✅ | ❌ |
+| /key-management | ✅ | ❌ | ❌ | ✅ |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Dev setup
+
+```bash
+npm install
+npm run dev       # starts at http://localhost:5173
+```
+
+Backend must be running at `http://localhost:8000`. The Vite proxy in `vite.config.js` forwards all `/api/*` requests to the backend, stripping the `/api` prefix.
+
+## Build for production
+
+```bash
+npm run build     # outputs to dist/
+```
+
+The `dist/` folder can be served statically or picked up by Docker.
+
+## Auth flow
+
+1. User logs in via `POST /api/auth/login`
+2. JWT token stored in `localStorage`
+3. `axios.js` interceptor attaches `Authorization: Bearer <token>` to every request
+4. On 401 response, interceptor clears localStorage and redirects to `/login`
+5. `ProtectedRoute` checks `AuthContext` on every navigation — redirects to `/login` if no user, `/dashboard` if wrong role
