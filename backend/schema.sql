@@ -5,10 +5,10 @@ DROP TABLE IF EXISTS employees;
 DROP TABLE IF EXISTS encryption_keys;
 
 CREATE TABLE encryption_keys (
-    key_id          VARCHAR(50) PRIMARY KEY,
-    algorithm       VARCHAR(50) NOT NULL DEFAULT 'AES-256-GCM',
-    status          ENUM('active', 'retired', 'compromised') NOT NULL DEFAULT 'active',
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    key_id     VARCHAR(50) PRIMARY KEY,
+    algorithm  VARCHAR(50) NOT NULL DEFAULT 'AES-256-GCM',
+    status     ENUM('pending_activation', 'active', 'suspended', 'retired', 'compromised') NOT NULL DEFAULT 'pending_activation',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO encryption_keys (key_id, algorithm, status)
@@ -38,6 +38,16 @@ CREATE TABLE audit_logs (
     table_name      VARCHAR(100) NOT NULL,
     record_id       INT NULL,
     timestamp       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE users (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    username      VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role          ENUM('admin', 'hr', 'analyst', 'keymanager') NOT NULL DEFAULT 'analyst',
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_audit_timestamp ON audit_logs(timestamp);
