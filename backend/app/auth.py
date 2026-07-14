@@ -10,7 +10,6 @@ from passlib.context import CryptContext
 from app.database import run_query, run_write
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "change-this-in-production")
-print(f"SECRET_KEY loaded: {SECRET_KEY[:10]}...")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
 
@@ -31,13 +30,11 @@ def create_access_token(data: dict) -> str:
     payload["exp"] = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def decode_token(token: str) -> Optional[dict]:
     try:
-        result = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(f"Token decoded OK: {result}")
-        return result
-    except JWTError as e:
-        print(f"JWT decode failed: {e}")
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
         return None
 
 
@@ -45,16 +42,14 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(bearer_scheme),
 ):
     token = credentials.credentials
-    print(f"Received token: {token[:30]}...")
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     rows = run_query(
-    "SELECT id, username, role FROM users WHERE id = :id",
-    {"id": int(payload.get("sub"))},
+        "SELECT id, username, role FROM users WHERE id = :id",
+        {"id": int(payload.get("sub"))},
     )
-    print(f"User query result: {rows}")
     if not rows:
         raise HTTPException(status_code=401, detail="User not found")
 

@@ -26,41 +26,57 @@ def get_master_key() -> bytes:
     return _MASTER_KEY
 
 
-def encrypt_value(plaintext: str) -> str:
-    if plaintext is None:
-        return None
+def generate_dek() -> bytes:
+    return os.urandom(32)
 
-    key = get_master_key()
+
+def wrap_key(raw_key: bytes) -> str:
+    kek = get_master_key()
+    aesgcm = AESGCM(kek)
+    nonce = os.urandom(NONCE_SIZE_BYTES)
+    wrapped = aesgcm.encrypt(nonce, raw_key, None)
+    return base64.b64encode(nonce + wrapped).decode("utf-8")
+
+
+def unwrap_key(wrapped_b64: str) -> bytes:
+    kek = get_master_key()
+    aesgcm = AESGCM(kek)
+    raw = base64.b64decode(wrapped_b64)
+    nonce = raw[:NONCE_SIZE_BYTES]
+    wrapped = raw[NONCE_SIZE_BYTES:]
+    return aesgcm.decrypt(nonce, wrapped, None)
+
+
+def _encrypt_with_key(plaintext: str, key: bytes) -> str:
     aesgcm = AESGCM(key)
     nonce = os.urandom(NONCE_SIZE_BYTES)
-
     ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
-    payload = nonce + ciphertext
-    return base64.b64encode(payload).decode("utf-8")
+    return base64.b64encode(nonce + ciphertext).decode("utf-8")
 
 
-def decrypt_value(stored_value: str) -> str:
-    if stored_value is None:
-        return None
-
-    key = get_master_key()
+def _decrypt_with_key(stored_value: str, key: bytes) -> str:
     aesgcm = AESGCM(key)
-
     raw = base64.b64decode(stored_value)
     nonce = raw[:NONCE_SIZE_BYTES]
     ciphertext = raw[NONCE_SIZE_BYTES:]
-
-    plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, None)
-    return plaintext_bytes.decode("utf-8")
+    return aesgcm.decrypt(nonce, ciphertext, None).decode("utf-8")
 
 
-if __name__ == "__main__":
-    os.environ.setdefault(MASTER_KEY_ENV_VAR, base64.b64encode(os.urandom(32)).decode())
-    sample = "123-45-6789"
-    enc = encrypt_value(sample)
-    dec = decrypt_value(enc)
-    print(f"Original:  {sample}")
-    print(f"Encrypted: {enc}")
-    print(f"Decrypted: {dec}")
-    assert dec == sample
-    print("Round-trip OK")
+def encrypt_value(plaintext: str, wrapped_key: str | None = None) -> str:
+    if plaintext is None:
+        return None
+    if wrapped_key is None:
+        key = get_master_key()
+    else:
+        key = unwrap_key(wrapped_key)
+    return _encrypt_with_key(plaintext, key)
+
+
+def decrypt_value(stored_value: str, wrapped_key: str | None = None) -> str:
+    if stored_value is None:
+        return None
+    if wrapped_key is None:
+        key = get_master_key()
+    else:
+        key = unwrap_key(wrapped_key)
+    return _decrypt_with_key(stored_value, key)

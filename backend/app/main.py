@@ -28,7 +28,7 @@ app.add_middleware(
 
 
 # --------------------------------------------------------------------------
-# AUTH ROUTES
+# AUTH
 # --------------------------------------------------------------------------
 
 class LoginRequest(BaseModel):
@@ -98,7 +98,55 @@ def health():
 
 
 # --------------------------------------------------------------------------
-# EMPLOYEE ROUTES
+# HELPERS
+# --------------------------------------------------------------------------
+
+def _get_wrapped_key(key_id: str) -> str | None:
+    rows = run_query(
+        "SELECT wrapped_key FROM encryption_keys WHERE key_id = :key_id",
+        {"key_id": key_id},
+    )
+    if not rows:
+        return None
+    return rows[0]["wrapped_key"]
+
+
+def _decrypt_row(row: dict) -> dict:
+    wrapped_key = _get_wrapped_key(row["key_id"])
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "department": row["department"],
+        "email": row["email"],
+        "ssn": crypto_engine.decrypt_value(row["ssn_encrypted"], wrapped_key),
+        "salary": float(crypto_engine.decrypt_value(row["salary_encrypted"], wrapped_key)),
+        "bank_account": crypto_engine.decrypt_value(row["bank_account_encrypted"], wrapped_key),
+        "key_id": row["key_id"],
+    }
+
+
+def log_audit(
+    operation: str,
+    table_name: str,
+    record_id: Optional[int] = None,
+    performed_by: Optional[str] = None,
+):
+    run_write(
+        """
+        INSERT INTO audit_logs (operation, table_name, record_id, performed_by)
+        VALUES (:operation, :table_name, :record_id, :performed_by)
+        """,
+        {
+            "operation": operation,
+            "table_name": table_name,
+            "record_id": record_id,
+            "performed_by": performed_by,
+        },
+    )
+
+
+# --------------------------------------------------------------------------
+# EMPLOYEES
 # --------------------------------------------------------------------------
 
 class EmployeeCreate(BaseModel):
@@ -119,34 +167,27 @@ class EmployeeUpdate(BaseModel):
     bank_account: Optional[str] = None
 
 
-def _decrypt_row(row: dict) -> dict:
-    return {
-        "id": row["id"],
-        "name": row["name"],
-        "department": row["department"],
-        "email": row["email"],
-        "ssn": crypto_engine.decrypt_value(row["ssn_encrypted"]),
-        "salary": float(crypto_engine.decrypt_value(row["salary_encrypted"])),
-        "bank_account": crypto_engine.decrypt_value(row["bank_account_encrypted"]),
-        "key_id": row["key_id"],
-    }
-
-
-def log_audit(operation: str, table_name: str, record_id: Optional[int] = None):
-    run_write(
-        "INSERT INTO audit_logs (operation, table_name, record_id) VALUES (:operation, :table_name, :record_id)",
-        {"operation": operation, "table_name": table_name, "record_id": record_id},
-    )
-
-
 @app.post("/employees", status_code=201)
 def create_employee(
     payload: EmployeeCreate,
     current_user: dict = Depends(require_roles("admin", "hr")),
 ):
-    ssn_enc = crypto_engine.encrypt_value(payload.ssn)
-    salary_enc = crypto_engine.encrypt_value(str(payload.salary))
-    bank_enc = crypto_engine.encrypt_value(payload.bank_account)
+    active_keys = run_query(
+        "SELECT key_id, wrapped_key FROM encryption_keys WHERE status = 'active' ORDER BY created_at DESC LIMIT 1"
+    )
+    if not active_keys:
+        raise HTTPException(
+            status_code=400,
+            detail="No active encryption key found. Generate and activate a key first."
+        )
+
+    active_key = active_keys[0]
+    key_id = active_key["key_id"]
+    wrapped_key = active_key["wrapped_key"]
+
+    ssn_enc = crypto_engine.encrypt_value(payload.ssn, wrapped_key)
+    salary_enc = crypto_engine.encrypt_value(str(payload.salary), wrapped_key)
+    bank_enc = crypto_engine.encrypt_value(payload.bank_account, wrapped_key)
 
     result = run_write(
         """
@@ -161,11 +202,11 @@ def create_employee(
             "ssn_enc": ssn_enc,
             "salary_enc": salary_enc,
             "bank_enc": bank_enc,
-            "key_id": crypto_engine.CURRENT_KEY_ID,
+            "key_id": key_id,
         },
     )
     new_id = result.lastrowid
-    log_audit("INSERT", "employees", new_id)
+    log_audit("INSERT", "employees", new_id, current_user["username"])
     rows = run_query("SELECT * FROM employees WHERE id = :id", {"id": new_id})
     return _decrypt_row(rows[0])
 
@@ -178,7 +219,7 @@ def get_employee(
     rows = run_query("SELECT * FROM employees WHERE id = :id", {"id": employee_id})
     if not rows:
         raise HTTPException(status_code=404, detail="Employee not found")
-    log_audit("SELECT", "employees", employee_id)
+    log_audit("SELECT", "employees", employee_id, current_user["username"])
     return _decrypt_row(rows[0])
 
 
@@ -193,7 +234,7 @@ def list_employees(
         )
     else:
         rows = run_query("SELECT * FROM employees")
-    log_audit("SELECT", "employees", None)
+    log_audit("SELECT", "employees", None, current_user["username"])
     return [_decrypt_row(r) for r in rows]
 
 
@@ -207,6 +248,8 @@ def update_employee(
     if not existing:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    wrapped_key = _get_wrapped_key(existing[0]["key_id"])
+
     updates = {}
     if payload.name is not None:
         updates["name"] = payload.name
@@ -215,11 +258,11 @@ def update_employee(
     if payload.email is not None:
         updates["email"] = payload.email
     if payload.ssn is not None:
-        updates["ssn_encrypted"] = crypto_engine.encrypt_value(payload.ssn)
+        updates["ssn_encrypted"] = crypto_engine.encrypt_value(payload.ssn, wrapped_key)
     if payload.salary is not None:
-        updates["salary_encrypted"] = crypto_engine.encrypt_value(str(payload.salary))
+        updates["salary_encrypted"] = crypto_engine.encrypt_value(str(payload.salary), wrapped_key)
     if payload.bank_account is not None:
-        updates["bank_account_encrypted"] = crypto_engine.encrypt_value(payload.bank_account)
+        updates["bank_account_encrypted"] = crypto_engine.encrypt_value(payload.bank_account, wrapped_key)
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields provided to update")
@@ -227,7 +270,7 @@ def update_employee(
     set_clause = ", ".join(f"{col} = :{col}" for col in updates)
     updates["id"] = employee_id
     run_write(f"UPDATE employees SET {set_clause} WHERE id = :id", updates)
-    log_audit("UPDATE", "employees", employee_id)
+    log_audit("UPDATE", "employees", employee_id, current_user["username"])
 
     rows = run_query("SELECT * FROM employees WHERE id = :id", {"id": employee_id})
     return _decrypt_row(rows[0])
@@ -242,7 +285,7 @@ def delete_employee(
     if not existing:
         raise HTTPException(status_code=404, detail="Employee not found")
     run_write("DELETE FROM employees WHERE id = :id", {"id": employee_id})
-    log_audit("DELETE", "employees", employee_id)
+    log_audit("DELETE", "employees", employee_id, current_user["username"])
     return None
 
 
@@ -265,20 +308,29 @@ def list_audit_logs(
 def list_encryption_keys(
     current_user: dict = Depends(require_roles("admin", "keymanager")),
 ):
-    return run_query("SELECT * FROM encryption_keys ORDER BY created_at DESC")
+    return run_query(
+        "SELECT key_id, algorithm, status, created_at FROM encryption_keys ORDER BY created_at DESC"
+    )
 
 
 @app.post("/encryption-keys/generate")
 def generate_key(
     current_user: dict = Depends(require_roles("admin", "keymanager")),
 ):
+    raw_dek = crypto_engine.generate_dek()
+    wrapped = crypto_engine.wrap_key(raw_dek)
     key_id = f"kms-key-{uuid.uuid4().hex[:8]}"
+
     run_write(
-        "INSERT INTO encryption_keys (key_id, algorithm, status) VALUES (:key_id, 'AES-256-GCM', 'pending_activation')",
-        {"key_id": key_id},
+        """
+        INSERT INTO encryption_keys (key_id, algorithm, status, wrapped_key)
+        VALUES (:key_id, 'AES-256-GCM', 'pending_activation', :wrapped_key)
+        """,
+        {"key_id": key_id, "wrapped_key": wrapped},
     )
     rows = run_query(
-        "SELECT * FROM encryption_keys WHERE key_id = :key_id", {"key_id": key_id}
+        "SELECT key_id, algorithm, status, created_at FROM encryption_keys WHERE key_id = :key_id",
+        {"key_id": key_id},
     )
     return rows[0]
 
@@ -292,7 +344,10 @@ def update_key_state(
     valid_states = ["pending_activation", "active", "suspended", "retired", "compromised"]
     new_state = payload.get("status")
     if new_state not in valid_states:
-        raise HTTPException(status_code=400, detail=f"Invalid state. Choose from: {valid_states}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid state. Choose from: {valid_states}"
+        )
 
     existing = run_query(
         "SELECT * FROM encryption_keys WHERE key_id = :key_id", {"key_id": key_id}
@@ -305,6 +360,7 @@ def update_key_state(
         {"status": new_state, "key_id": key_id},
     )
     rows = run_query(
-        "SELECT * FROM encryption_keys WHERE key_id = :key_id", {"key_id": key_id}
+        "SELECT key_id, algorithm, status, created_at FROM encryption_keys WHERE key_id = :key_id",
+        {"key_id": key_id},
     )
     return rows[0]

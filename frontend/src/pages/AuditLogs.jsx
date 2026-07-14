@@ -31,7 +31,7 @@ export default function AuditLogs() {
     <Layout>
       <div className="page-header">
         <h2>Audit Logs</h2>
-        <p>Every database operation is recorded here — DAM-style monitoring of all activity against protected tables.</p>
+        <p>Every database operation recorded — who did what, on which record, and when.</p>
       </div>
 
       <div className="card">
@@ -56,6 +56,7 @@ export default function AuditLogs() {
                     <th>Operation</th>
                     <th>Table</th>
                     <th>Record ID</th>
+                    <th>Performed By</th>
                     <th>Timestamp</th>
                   </tr>
                 </thead>
@@ -66,6 +67,12 @@ export default function AuditLogs() {
                       <td><span className={`badge ${OP_COLORS[log.operation] || 'badge-gray'}`}>{log.operation}</span></td>
                       <td><code style={{ fontSize: 12 }}>{log.table_name}</code></td>
                       <td>{log.record_id ?? <span style={{ color: '#94a3b8' }}>—</span>}</td>
+                      <td>
+                        {log.performed_by
+                          ? <span style={{ fontSize: 12, fontWeight: 600, color: '#1e3a5f' }}>{log.performed_by}</span>
+                          : <span style={{ color: '#94a3b8', fontSize: 12 }}>system</span>
+                        }
+                      </td>
                       <td style={{ color: '#64748b', fontSize: 12 }}>{new Date(log.timestamp).toLocaleString()}</td>
                     </tr>
                   ))}
@@ -75,7 +82,7 @@ export default function AuditLogs() {
             {logs.length > 10 && (
               <button
                 onClick={() => setShowAll(s => !s)}
-                style={{ display: 'block', width: '100%', textAlign: 'center', padding: 10, fontSize: 13, color: '#1e3a5f', fontWeight: 600, cursor: 'pointer', borderTop: '1px solid #f1f5f9', marginTop: 4, background: 'none', border: 'none', borderTop: '1px solid #f1f5f9' }}
+                style={{ display: 'block', width: '100%', textAlign: 'center', padding: 10, fontSize: 13, color: '#1e3a5f', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', borderTop: '1px solid #f1f5f9', marginTop: 4 }}
               >
                 {showAll ? 'Show less ↑' : `View all ${logs.length} events ↓`}
               </button>
