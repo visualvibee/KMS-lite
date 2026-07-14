@@ -1,3 +1,6 @@
+# Root
+.env
+
 # Backend
 backend/.env
 backend/__pycache__/
