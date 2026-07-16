@@ -146,3 +146,34 @@ The `KMS_LITE_MASTER_KEY` is used to encrypt all sensitive fields — losing it 
 - **Login is session-based only** — no refresh tokens; session expires after 8 hours.
 - **Docker** — containerization planned; not yet implemented.
 - **RBAC is route-level** — field-level access control (e.g. analyst can view but not reveal SSN) is future scope.
+
+Setup:
+powershellgit clone https://github.com/visualvibee/KMS-lite.git
+cd KMS-lite
+Create .env in the root kms-lite/ folder:
+MYSQL_ROOT_PASSWORD=RootPass2026!
+DB_PASSWORD=KmsLite2026!
+KMS_LITE_MASTER_KEY=paste_generated_key_here
+KMS_LITE_API_KEYS=testkey123
+JWT_SECRET_KEY=paste_generated_key_here
+Generate the two secret values (needs Python installed locally, or ask someone who has it):
+powershellpython -c "import os,base64; print(base64.b64encode(os.urandom(32)).decode())"
+python -c "import secrets; print(secrets.token_hex(32))"
+First run (builds images, takes 3-5 minutes):
+powershelldocker compose up --build -d
+Open browser: http://localhost
+Default login: admin / Admin123!
+Create additional users:
+powershellInvoke-RestMethod -Uri "http://localhost/api/auth/register" -Method Post -ContentType "application/json" -Body '{"username":"hr1","password":"Hr123!","role":"hr"}'
+Invoke-RestMethod -Uri "http://localhost/api/auth/register" -Method Post -ContentType "application/json" -Body '{"username":"analyst1","password":"Analyst123!","role":"analyst"}'
+Invoke-RestMethod -Uri "http://localhost/api/auth/register" -Method Post -ContentType "application/json" -Body '{"username":"km1","password":"Km123!","role":"keymanager"}'
+Go to Key Management → Generate Key → Activate it before adding any employees.
+Daily commands:
+powershelldocker compose up -d        # start (after first build, very fast)
+docker compose down         # stop (data preserved)
+docker compose down -v      # stop and wipe everything (fresh start)
+docker compose logs backend # see backend logs if something breaks
+docker compose ps           # check what's running
+Subsequent runs (images already built, takes ~30 seconds):
+powershelldocker compose up -d
+That's it. No Python, Node, or MySQL needed on the machine — Docker provides everything.
